@@ -2,6 +2,8 @@
 
 > 本项目的独立记忆，其他 cc-haha 不共享
 
+- [user_profile](../memory/user_profile.md) — 用户画像 (共享)
+
 ## Failover 代理配置
 
 ### 问题

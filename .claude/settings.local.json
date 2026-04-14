@@ -55,7 +55,13 @@
       "Bash(findstr \"9019\")",
       "Bash(findstr \"9018\")",
       "Bash(findstr \":9018\")",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(bun run:*)",
+      "Bash(bun --env-file=.env -e 'console.log\\(\"\"ANTHROPIC_BASE_URL:\"\", process.env.ANTHROPIC_BASE_URL\\)')",
+      "Bash(powershell -Command \"Remove-Item ''D:/项目/claude code official/cc-haha/.env'' -Force\")",
+      "Bash(echo:*)",
+      "Bash(unset ANTHROPIC_BASE_URL)",
+      "Bash(find 'D:/项目/claude code official/cc-haha/src' -name *.ts)"
     ]
   }
 }

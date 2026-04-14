@@ -200,18 +200,11 @@ async function handleRequest(req, res) {
         console.log(`[错误] ${model}: ${e.message}`)
       }
 
-      consecutiveFailures++
-
-      if (consecutiveFailures >= FAILURE_THRESHOLD) {
-        currentIndex = (currentIndex + 1) % models.length
-        consecutiveFailures = 0
-        console.log(`[熔断] 切换到: ${models[currentIndex]}`)
-      } else {
-        currentIndex = (currentIndex + 1) % models.length
-      }
+      // 失败 → 立即换下一个模型
+      currentIndex = (currentIndex + 1) % models.length
     }
 
-    // 失败时返回信息
+    // 所有模型都失败
     res.writeHead(502, {
       'Content-Type': 'application/json',
       'X-Used-Model': models[currentIndex],
