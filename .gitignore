@@ -10,3 +10,10 @@ extracted-natives/
 # VitePress
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Tools and binaries
+tool/
+*.exe
+*.msi
+*.pdb
+dump.rdb
