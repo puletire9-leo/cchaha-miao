@@ -1,0 +1,27 @@
+node_modules
+dist
+.vscode
+.claude
+.idea
+.git
+.gitignore
+*.log
+http.log
+npm-debug.log
+.DS_Store
+
+# 构建中间产物和测试文件
+deploy.sh
+deploy-all.sh
+*.zip
+*.tar.gz
+test*.txt
+
+# Docker 自身配置（避免递归）
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档
+README.md
+LICENSE

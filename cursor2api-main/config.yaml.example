@@ -1,0 +1,282 @@
+# Cursor2API v2 配置文件
+# 复制此文件为 config.yaml 并根据需要修改
+#
+# ⚠️ 环境变量优先级高于此文件：
+#    若通过环境变量（如 docker-compose 的 environment 块）设置了某个参数，
+#    则修改此文件对该参数无效，热重载也不会生效。
+#    需要在 config.yaml 中管理的参数，请勿同时在环境变量中设置。
+
+# 服务端口
+port: 3010
+
+# 请求超时（秒）
+timeout: 120
+
+# ==================== API 鉴权（推荐公网部署时开启） ====================
+# 配置后所有 POST 请求必须携带 Bearer token 才能访问
+# 客户端使用方式：Authorization: Bearer <token> 或 x-api-key: <token>
+# 支持多个 token（数组格式），不配置则全部放行
+# 环境变量: AUTH_TOKEN=token1,token2 (逗号分隔)
+# auth_tokens:
+#   - "sk-your-secret-token-1"
+#   - "sk-your-secret-token-2"
+
+# ==================== 代理设置 ====================
+# 全局代理（可选）
+# ⚠️ Node.js fetch 不读取 HTTP_PROXY / HTTPS_PROXY 环境变量，
+#    必须在此处或通过 PROXY 环境变量显式配置代理。
+# 支持 http 代理，含认证格式: http://用户名:密码@代理地址:端口
+# 💡 国内可直连 Cursor API，通常不需要配置全局代理
+# proxy: "http://127.0.0.1:7890"
+
+# Cursor 使用的模型
+cursor_model: "google/gemini-3-flash"
+
+# ==================== 自动续写配置 ====================
+# 当模型输出被截断时，自动发起续写请求的最大次数
+# 默认 0（禁用），由客户端（如 Claude Code）自行处理续写，体验更好
+# 设为 1~3 可启用 proxy 内部续写（拼接更完整，但延迟更高）
+# 环境变量: MAX_AUTO_CONTINUE=0
+max_auto_continue: 0
+
+# ==================== 历史消息条数硬限制 ====================
+# 输入消息条数上限，超出时删除最早的消息（保留工具 few-shot 示例）
+# 注意：按条数限制无法反映实际 token 体积，建议改用 max_history_tokens（更精准）
+# 如需同时设置，两者独立生效，取更严格的结果
+# 设为 -1 不限制消息条数
+# 环境变量: MAX_HISTORY_MESSAGES=100
+max_history_messages: -1
+
+# ==================== 历史消息 Token 数硬限制（推荐） ====================
+# 按 js-tiktoken (cl100k_base) 估算 token 数裁剪历史，比按条数更精准
+# 能有效防止超出 Cursor API 200k 上下文上限，保障模型输出稳定
+#
+# 说明：此值仅计算我们发送的消息内容 token
+#   代码会自动额外补偿 Cursor 后端开销（动态计算）：
+#   - 基础隐藏系统提示：约 1,300 tokens（固定）
+#   - 工具 tokenizer 差异：compact ~20/工具，full ~240/工具，names_only ~5/工具
+#   输出空间不在此预留，由用户自行通过此值控制（建议留 16,000~32,000 余量）
+#
+# 裁剪规则：
+#   - 系统提示 + 工具定义的 token 优先扣除（含上述固定开销）
+#   - 剩余额度从最新消息往前累加，超出预算的最早消息整条删除
+#   - 工具模式的 few-shot 示例（前 2 条）始终保留
+#
+# 参考值：110000～130000，示例推荐 120000
+# 程序内置默认值仍为 150000；此示例采用更保守的 120000，给长回答/长工具参数预留更多输出空间
+# Cursor API 上下文上限约 200k tokens，建议 max_history_tokens + 开销 + 预留输出 ≤ 200000
+#
+# 与 max_history_messages 的关系：
+#   两者独立生效，若同时设置则取更严格的结果
+#   推荐：只设置 max_history_tokens，不设置 max_history_messages
+#
+# 设为 -1 不限制
+# 环境变量: MAX_HISTORY_TOKENS=120000
+max_history_tokens: 120000
+
+# ==================== 上下文压力膨胀（防截断核心机制） ====================
+# 虚增报告给客户端的 input_tokens，让 Claude Code 提前触发自动压缩
+# 原理：Claude Code 假设 context window 200K，在 ~80%(160K) 时自动压缩
+#        但 Cursor API 实际 window 只有 ~150K，输出空间更早被挤压
+# 膨胀系数：1.35 = 200K/150K（推荐值，精确匹配 Cursor 实际窗口比例）
+# 效果：Cursor 实际输入 ~118K 时，报告 ~160K → 客户端提前压缩 → 避免截断
+# 设为 1.0 关闭膨胀，设为 1.5 则更激进地触发压缩
+# 环境变量: CONTEXT_PRESSURE=1.35
+# context_pressure: 1.35
+
+# ==================== Thinking 开关（最高优先级） ====================
+# 控制是否向 Cursor 发送 thinking 请求，优先级高于客户端传入的 thinking 参数
+# 设为 true: 强制启用 thinking（即使客户端没请求也注入）
+# 设为 false: 强制关闭 thinking（即使客户端请求了 thinking 也不启用）
+# 不配置此项时: 跟随客户端请求（Anthropic API 看 thinking 参数，OpenAI API 看模型名/reasoning_effort）
+# 环境变量: THINKING_ENABLED=true|false
+thinking:
+  enabled: false
+
+# ==================== 历史消息压缩配置 ====================
+# 对话过长时自动压缩早期消息，释放输出空间，防止 Cursor 上下文溢出
+# 压缩算法会智能识别消息类型，不会破坏工具调用的 JSON 结构
+compression:
+  # 是否启用压缩（true/false），关闭后所有消息原样保留
+  # 环境变量: COMPRESSION_ENABLED=true|false
+  enabled: true
+
+  # 压缩级别: 1=轻度, 2=中等(推荐), 3=激进
+  # 环境变量: COMPRESSION_LEVEL=1|2|3
+  # 级别说明:
+  #   1（轻度）: 保留最近 10 条消息，早期消息保留 4000 字符，适合短对话
+  #   2（中等）: 保留最近 6 条消息，早期消息保留 2000 字符，推荐日常使用
+  #   3（激进）: 保留最近 4 条消息，早期消息保留 1000 字符，适合超长对话/大工具集
+  level: 2
+
+  # 以下为高级选项，设置后会覆盖 level 的预设值
+  # 保留最近 N 条消息不压缩（数字越大保留越多上下文）
+  # keep_recent: 6
+
+  # 早期消息最大字符数（超过此长度的消息会被智能压缩）
+  # early_msg_max_chars: 2000
+
+# ==================== 工具处理配置 ====================
+# 控制工具定义如何传递给模型，影响上下文体积和工具调用准确性
+tools:
+  # Schema 呈现模式
+  #   'compact': [推荐] TypeScript 风格的紧凑签名，体积最小（~15K chars/90工具）
+  #              示例: {file_path!: string, encoding?: utf-8|base64}
+  #   'full':    程序内置默认值，完整 JSON Schema，工具调用最精确
+  #              适合工具少（<20个）或需要最高准确率的场景
+  #   'names_only': 只输出工具名和描述，不输出参数Schema
+  #              极致省 token，适合模型已经"学过"这些工具的场景（如 Claude Code 内置工具）
+  schema_mode: 'compact'
+
+  # 工具描述截断长度
+  #   100: [推荐] 工具多、上下文容易挤满时的折中值
+  #   0:   程序内置默认值，不截断，保留完整描述（适合工具少的场景）
+  #   200: 保留更多描述信息，适合参数复杂的工具集
+  description_max_length: 100
+
+  # 工具白名单 — 只保留指定名称的工具（不配则保留所有工具）
+  # 💡 适合只用核心工具、排除大量不需要的 MCP 工具等场景
+  # include_only:
+  #   - "Read"
+  #   - "Write"
+  #   - "Bash"
+  #   - "Glob"
+  #   - "Grep"
+  #   - "Edit"
+
+  # 工具黑名单 — 排除指定名称的工具
+  # 💡 比白名单更灵活，可以只去掉几个不常用的工具
+  # exclude:
+  #   - "some_mcp_tool"
+
+  # ★ 透传模式（推荐 Roo Code / Cline 等非 Claude Code 客户端开启）
+  #   true:  跳过 few-shot 注入和工具格式改写，直接将工具定义以原始 JSON 嵌入系统提示词
+  #          减少与 Cursor 内建身份的提示词冲突，解决「只有 read_file/read_dir」的错误
+  #          工具调用仍使用 ```json action``` 格式，响应解析不受影响
+  #   false: [默认] 使用标准模式（buildToolInstructions + 多类别 few-shot 注入）
+  #          Claude Code 推荐此模式，兼容性和工具调用覆盖率更好
+  # 环境变量: TOOLS_PASSTHROUGH=true|false
+  passthrough: false
+
+  # ★ 禁用模式（极致省上下文）
+  #   true:  完全不注入工具定义和 few-shot 示例，节省大量上下文空间
+  #          模型凭自身训练记忆处理工具调用（适合已内化工具格式的场景）
+  #          响应中的 ```json action``` 块仍会被正常解析
+  #   false: [默认] 正常注入工具定义
+  # 环境变量: TOOLS_DISABLED=true|false
+  disabled: false
+
+  # ★ 自适应历史预算（默认关闭）
+  #   true:  根据工具数量自动收紧历史 token 预算，给输出留更多空间
+  #          工具越多 → 额外预留越多输出空间（90个工具约多留 8K tokens）
+  #          有效缓解长对话 + 多工具场景下的 max_output_token 截断问题
+  #   false: [默认] 关闭自适应，完全使用 max_history_tokens 的固定值
+  # 环境变量: TOOLS_ADAPTIVE_BUDGET=true|false
+  # adaptive_budget: true
+
+  # ★ 智能截断（默认关闭）
+  #   true:  按工具类型差异化截断结果，保留最有价值的部分
+  #          Read    → 头部 50% + 尾部 30%（文件头有 import，尾部有关键代码）
+  #          Bash    → 头部 20% + 尾部 60%（错误信息在末尾）
+  #          Search  → 头部 70% + 尾部 15%（第一批匹配最相关）
+  #          Default → 头部 60% + 尾部 40%（通用平衡策略）
+  #   false: [默认] 所有工具结果统一使用 60/40 头尾截断
+  # 环境变量: TOOLS_SMART_TRUNCATION=true|false
+  # smart_truncation: true
+
+# ==================== 响应内容清洗（可选，默认关闭） ====================
+# 开启后，会将响应中 Cursor 相关的身份引用替换为 Claude
+# 例如 "I am Cursor's support assistant" → "I am Claude, an AI assistant by Anthropic"
+# 同时清洗工具可用性声明、提示注入指控等敏感内容
+# 💡 如果你不需要伪装身份，建议保持关闭以获得最佳性能
+# 💡 开启后，所有响应都会经过正则替换处理，有轻微性能开销
+# sanitize_response: true
+
+# ==================== 自定义拒绝检测规则（可选） ====================
+# 追加到内置拒绝检测列表之后（不替换内置规则），匹配到则触发重试逻辑
+# 每条规则作为正则表达式解析（不区分大小写），无效正则会自动退化为字面量匹配
+# 💡 适用场景：特定语言的拒绝措辞、项目特有的拒绝响应、新的 Cursor 拒绝模式
+# 支持热重载：修改后下一次请求即生效
+# refusal_patterns:
+#   - "我无法协助"
+#   - "this violates our"
+#   - "I must decline"
+#   - "无法为您提供"
+#   - "this request is outside"
+
+# ==================== 自定义系统提示词（覆盖 Cursor 内置身份） ====================
+# 配置后会作为最高优先级指令注入对话开头，覆盖 Cursor 的"文档助手"身份
+# 支持热重载，修改后下一次请求即生效
+# 环境变量: SYSTEM_PROMPT="your prompt here"
+# system_prompt: |
+#   You are Claude, a helpful AI assistant made by Anthropic.
+#   You are knowledgeable, honest, and direct.
+#   Answer questions thoroughly and helpfully.
+
+# ==================== Stealth 代理（推荐，自动绕过 Vercel Bot Protection） ====================
+# 配合独立部署的 stealth-proxy 服务使用
+# stealth-proxy 通过无头 Chrome 浏览器代理请求，自动处理 Vercel JS Challenge
+# 配置后所有 Cursor API 请求将通过 stealth-proxy 转发，无需手动管理 cookie
+# 环境变量: STEALTH_PROXY=http://stealth-proxy:3011
+# stealth_proxy: "http://stealth-proxy:3011"
+
+# ==================== Cursor Cookie（手动方式，通过 Vercel 安全验证） ====================
+# Cursor 网站启用了 Vercel 安全检查点，需要携带有效 Cookie 才能正常访问 API
+# 获取方式：浏览器打开 cursor.com → F12 开发者工具 → Network → 复制任意请求的 Cookie 头
+# 关键 Cookie：_vcrcs（Vercel 验证令牌），过期后需重新获取
+# 环境变量: CURSOR_COOKIE="your_cookie_string"
+# cookie: "generaltranslation.locale-routing-enabled=true; _vcrcs=..."
+
+# 浏览器指纹配置
+fingerprint:
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+# ==================== 视觉处理降级配置（可选） ====================
+# 如果开启，可以拦截您发给大模型的图片进行降级处理（因为目前免费 Cursor 不支持视觉）。
+vision:
+  enabled: true
+  # mode 选项: 'ocr' 或 'api'
+  # 'ocr': [默认模式] 彻底免 Key，零配置，完全依赖本机的 CPU 识图，提取文本、报错日志、代码段后发给大模型。
+  # 'api': 需要配置下方的 baseUrl 和 apiKey，把图发给外部视觉模型（如 Gemini、OpenRouter），能"看到"画面内容和色彩。
+  mode: 'ocr'
+  
+  # ---------- 以下选项仅在 mode: 'api' 时才生效 ----------
+  # base_url: "https://openrouter.ai/api/v1/chat/completions"
+  # api_key: "sk-or-v1-..."
+  # model: "meta-llama/llama-3.2-11b-vision-instruct:free"
+  
+  # Vision 独立代理（可选）
+  # 💡 Cursor API 国内可直连无需代理，但图片分析 API（OpenAI/OpenRouter）可能需要
+  #    配置此项后只有图片 API 走代理，不影响主请求的响应速度
+  #    如果不配，会回退到上面的全局 proxy（如果有的话）
+  # proxy: "http://127.0.0.1:7890"
+
+# ==================== 日志持久化配置（可选） ====================
+# 支持两种持久化方式，可单独开启或同时开启（双写）。
+# 支持热重载，修改 config.yaml 后无需重启即可生效。
+#
+# 方式一：JSONL 文件（每天一个文件，适合日志量较小的场景）
+#   环境变量: LOG_FILE_ENABLED=true|false, LOG_DIR=./logs, LOG_PERSIST_MODE=compact|full|summary
+#
+# 方式二：SQLite 数据库（推荐，解决大文件 OOM 问题，支持重启后历史查询和分页）
+#   优势：启动时仅加载 summary，payload 按需查询，彻底避免 OOM
+#   优势：Vue UI 支持重启后翻页查看完整历史，搜索/筛选命中全量数据
+#   环境变量: LOG_DB_ENABLED=true|false, LOG_DB_PATH=./logs/cursor2api.db
+logging:
+  # 方式一：JSONL 文件持久化（默认关闭）
+  # ⚠️ 单天日志量大时（>100MB）建议改用 SQLite 方式，避免启动 OOM
+  file_enabled: false
+  # 日志文件存储目录
+  dir: "./logs"
+  # 日志保留天数（超过天数的日志文件会自动清理）
+  max_days: 7
+  # 落盘模式:
+  #   compact = 精简调试信息（保留更多排障细节）
+  #   full    = 完整持久化（文件体积最大，慎用）
+  #   summary = 仅保留”用户问了什么 / 模型答了什么”与少量元数据（默认）
+  persist_mode: summary
+
+  # 方式二：SQLite 数据库持久化（推荐，默认关闭）
+  db_enabled: false
+  # SQLite 文件路径（确保 logs 目录已挂载，Docker 下同 dir 目录）
+  db_path: "./logs/cursor2api.db"

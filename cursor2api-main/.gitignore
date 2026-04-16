@@ -1,0 +1,54 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Node
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+*.env.local
+
+# Build
+dist/
+build/
+*.traineddata
+
+# Config (contains sensitive tokens, use config.yaml.example as template)
+config.yaml
+
+# Database
+*.db
+
+# Screenshots (dev artifacts)
+*.png
+# Test result artifacts
+test/*-results*.json
+test/ctf-*-results.json
+
+# Claude local settings
+.claude/
+
+# Vue UI build output and dependencies
+public/vue/
+vue-ui/node_modules/
+
+# Deploy scripts (contain sensitive server info)
+deploy-all.sh
