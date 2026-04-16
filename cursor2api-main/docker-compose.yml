@@ -1,0 +1,97 @@
+services:
+  cursor2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cursor2api:latest
+    container_name: cursor2api
+    restart: unless-stopped
+    ports:
+      - "3010:3010"
+    volumes:
+      # 挂载配置文件（可选）——先从 config.yaml.example 复制一份: cp config.yaml.example config.yaml
+      # 修改后只需 docker compose restart 即可生效；不挂载则使用内置默认值 + 环境变量
+      - ./config.yaml:/app/config.yaml
+      # 日志持久化目录（需要在 config.yaml 或环境变量中开启 logging.file_enabled）
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=3010
+      - TIMEOUT=120
+      # ⚠️ 部署到海外机器无需代理，如果在国内云，取消注释并填入你的本机 http/socks 代理
+      # - PROXY=http://host.docker.internal:7890
+
+      # [可选环境变量] 以下变量如果声明，将会覆盖 config.yaml 中对应的配置：
+      - CURSOR_MODEL=google/gemini-3-flash
+
+      # ── API 鉴权 ──
+      # 公网部署时强烈建议开启，多个 token 用逗号分隔
+      # - AUTH_TOKEN=sk-your-secret-token-1,sk-your-secret-token-2
+
+      # ── Thinking 开关（最高优先级，覆盖 config.yaml） ──
+      # true=始终启用思考链, false=强制关闭
+      # - THINKING_ENABLED=true
+
+      # ── 历史消息压缩（推荐开启） ──
+      # - COMPRESSION_ENABLED=true
+      # - COMPRESSION_LEVEL=2
+
+      # ── 自动续写 & 历史消息限制 ──
+      # - MAX_AUTO_CONTINUE=0          # 截断后自动续写次数，0=禁用(默认)
+      # - MAX_HISTORY_MESSAGES=-1      # 历史消息条数上限，-1=不限制（建议改用 MAX_HISTORY_TOKENS）
+      # - MAX_HISTORY_TOKENS=120000    # 示例推荐值；程序内置默认仍为 150000，更保守以减少长输出/长工具参数截断
+
+      # ── 日志持久化（⚠️ 修改后需重启容器生效） ──
+      # 方式一：JSONL 文件（日志量小时使用）
+      # - LOG_FILE_ENABLED=true
+      # - LOG_DIR=./logs
+      # 方式二：SQLite（推荐，避免大文件 OOM，支持重启后历史查询）
+      # - LOG_DB_ENABLED=true
+      # - LOG_DB_PATH=./logs/cursor2api.db
+
+      # ── 浏览器指纹（base64 JSON） ──
+      # - FP=eyJ1c2VyQWdlbnQiOiIuLi4ifQ==
+
+      # ── Vision 图片处理 ──
+      # 默认使用本地 OCR（零配置），如需外部 Vision API 请在 config.yaml 中修改 vision.mode 为 'api'
+      # 并配置 vision.base_url / vision.api_key / vision.model
+
+      # ── 工具模式推荐（Claude Code / Cursor Agent） ──
+      # 推荐在 config.yaml 中保持：
+      #   tools.schema_mode: compact
+      #   tools.description_max_length: 100
+      #   tools.passthrough: false
+      #   tools.disabled: false
+      #
+      # Roo Code / Cline 等非 Claude Code 客户端如遇到工具识别冲突，再考虑启用透传模式：
+      # - TOOLS_PASSTHROUGH=true
+
+      # ── 工具禁用模式（极致省上下文） ──
+      # 完全不注入工具定义和 few-shot，模型凭训练记忆调用工具
+      # 仅在极端省上下文场景下再启用，日常推荐保持 false（由 config.yaml 管理）
+      # - TOOLS_DISABLED=true
+
+      # ── 上下文压力膨胀（防截断） ──
+      # 虚增 input_tokens 让 Claude Code 提前触发自动压缩，有效减少 max_output_token 截断
+      # 1.35 = 200K(Claude Code假设窗口) / 150K(Cursor实际窗口)，设 1.0 关闭
+      # - CONTEXT_PRESSURE=1.35
+
+      # ── 自适应历史预算 ──
+      # 工具数量越多，自动预留越多输出空间（90工具约多留 8K tokens）
+      # - TOOLS_ADAPTIVE_BUDGET=true
+
+      # ── 智能截断 ──
+      # 按工具类型差异化截断结果（Read/Bash/Search 各用不同头尾比例）
+      # - TOOLS_SMART_TRUNCATION=true
+
+      # ── Stealth 代理（绕过 Vercel Bot Protection） ──
+      # 镜像已内置 stealth-proxy，设置 ENABLE_STEALTH=true 即可自动启动
+      # 无需额外容器，stealth-proxy 在同一容器内运行并自动连接
+      - ENABLE_STEALTH=true
+
+      # ── 响应内容清洗 ──
+      # 开启后会将响应中 Cursor 身份引用替换为 Claude（默认关闭）
+      # - SANITIZE_RESPONSE=true
+
+      # ── 自定义拒绝检测规则 ──
+      # 仅支持 config.yaml 配置（无环境变量覆盖），详见 config.yaml.example 中的 refusal_patterns 节

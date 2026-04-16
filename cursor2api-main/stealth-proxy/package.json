@@ -1,0 +1,15 @@
+{
+  "name": "cursor2api-stealth-proxy",
+  "version": "1.0.0",
+  "description": "Stealth browser proxy for bypassing Vercel Bot Protection",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "playwright": "^1.59.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

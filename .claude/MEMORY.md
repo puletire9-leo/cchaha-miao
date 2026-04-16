@@ -2,7 +2,9 @@
 
 > 本项目的独立记忆，其他 cc-haha 不共享
 
-- [user_profile](../memory/user_profile.md) — 用户画像 (共享)
+- [memory/user_profile.md] — 用户画像
+- [memory/记忆规则_每次对话评估.md] — 记忆规则
+- [memory/记忆系统结构.md] — 记忆系统结构
 
 ## Failover 代理配置
 

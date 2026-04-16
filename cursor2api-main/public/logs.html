@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<script>!function(){var t=localStorage.getItem('cursor2api_theme');if(!t){t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}()</script>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cursor2API - 全链路日志</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/public/logs.css">
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <h1><span class="ic">⚡</span> Cursor2API 日志</h1>
+    <div class="hdr-stats">
+      <div class="sc"><b id="sT">0</b>请求</div>
+      <div class="sc sc-ok">✓<b id="sS">0</b></div>
+      <div class="sc sc-deg">!<b id="sD">0</b></div>
+      <div class="sc sc-err">✗<b id="sE">0</b></div>
+      <div class="sc"><b id="sA">-</b>ms 均耗</div>
+      <div class="sc">⚡<b id="sF">-</b>ms TTFT</div>
+    </div>
+    <div class="hdr-r">
+      <button class="hdr-btn" id="clearBtn" onclick="clearLogs()">🗑 清空</button>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题"></button>
+      <div class="conn on" id="conn"><div class="d"></div><span>已连接</span></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="side">
+      <div class="search"><div class="sw"><input class="si" id="searchIn" placeholder="关键字搜索 (Ctrl+K)"/></div></div>
+      <div class="tbar" id="tbar">
+        <button class="tb a" data-t="all" onclick="setTF('all',this)">全部</button>
+        <button class="tb" data-t="today" onclick="setTF('today',this)">今天</button>
+        <button class="tb" data-t="2d" onclick="setTF('2d',this)">两天</button>
+        <button class="tb" data-t="7d" onclick="setTF('7d',this)">一周</button>
+        <button class="tb" data-t="30d" onclick="setTF('30d',this)">一月</button>
+      </div>
+      <div class="fbar" id="fbar">
+        <button class="fb a" data-f="all" onclick="fR('all',this)">全部<span class="fc" id="cA">0</span></button>
+        <button class="fb" data-f="success" onclick="fR('success',this)">✓<span class="fc" id="cS">0</span></button>
+        <button class="fb" data-f="degraded" onclick="fR('degraded',this)">!<span class="fc" id="cD">0</span></button>
+        <button class="fb" data-f="error" onclick="fR('error',this)">✗<span class="fc" id="cE">0</span></button>
+        <button class="fb" data-f="processing" onclick="fR('processing',this)">◌<span class="fc" id="cP">0</span></button>
+        <button class="fb" data-f="intercepted" onclick="fR('intercepted',this)">⊘<span class="fc" id="cI">0</span></button>
+      </div>
+      <div class="rlist" id="rlist">
+        <div class="empty"><div class="ic">📡</div><p>等待请求...</p></div>
+      </div>
+    </div>
+    <div class="dp">
+      <div class="dh">
+        <h2>🔍 <span id="dTitle">实时日志流</span></h2>
+        <div class="dh-acts">
+          <label class="auto-expand"><input type="checkbox" id="autoExpand"/>自动展开详情</label>
+          <div class="lvf" id="lvF">
+            <button class="lvb a" onclick="sL('all',this)">全部</button>
+            <button class="lvb" onclick="sL('info',this)">Info</button>
+            <button class="lvb" onclick="sL('warn',this)">Warn</button>
+            <button class="lvb" onclick="sL('error',this)">Error</button>
+          </div>
+        </div>
+      </div>
+      <div class="scard" id="scard"><div class="sgrid" id="sgrid"></div></div>
+      <div class="ptl" id="ptl"><div class="ptl-lbl">阶段耗时</div><div class="ptl-bar" id="pbar"></div></div>
+      <div class="tabs" id="tabs" style="display:none">
+        <div class="tab a" data-tab="logs" onclick="setTab('logs',this)">📋 日志</div>
+        <div class="tab" data-tab="request" onclick="setTab('request',this)">📥 请求参数</div>
+        <div class="tab" data-tab="prompts" onclick="setTab('prompts',this)">💬 提示词对比</div>
+        <div class="tab" data-tab="response" onclick="setTab('response',this)">📤 响应内容</div>
+      </div>
+      <div class="tab-content" id="tabContent">
+        <div class="llist" id="logList">
+          <div class="empty"><div class="ic">📋</div><p>实时日志将在此显示</p><p class="sub">发起请求后即可看到全链路日志</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/public/logs.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: cursor2api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3010
+      - key: TIMEOUT
+        value: 120
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=400"
+      # Cursor session token（必填）
+      - key: CURSOR_SESSION_TOKEN
+        sync: false
+      # API 鉴权 token（必填，公网部署强烈建议设置）
+      - key: AUTH_TOKEN
+        sync: false
+      # 使用的模型
+      - key: CURSOR_MODEL
+        value: google/gemini-3-flash
+      # 历史 token 限制
+      - key: MAX_HISTORY_TOKENS
+        value: 120000
+      # 压缩配置
+      - key: COMPRESSION_ENABLED
+        value: true
+      - key: COMPRESSION_LEVEL
+        value: 2
+      # 禁用 SQLite（Render 免费版无持久化磁盘）
+      - key: LOG_DB_ENABLED
+        value: false
+      - key: LOG_FILE_ENABLED
+        value: false
+    healthCheckPath: /health
